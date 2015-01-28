@@ -1,10 +1,35 @@
 #!/usr/bin/env ruby
 
+require 'optparse'
 require 'qiita-markdown'
+require 'qiita/markdown/filters/execute'
 
-input = STDIN
-input = File.open(ARGV[0]) if ARGV.length > 0
+options = {
+  ext: []
+}
+targets = []
+
+opt = OptionParser.new
+opt.on '-w [EXT]', '--with [EXT]', 'specify extension to use' do |v|
+  options[:ext] << v.to_sym
+end
+opt.permute! ARGV
+
+targets.concat(ARGV.map { |f| File.open f })
+targets << STDIN if targets.empty?
+
+module Qiita
+  module Markdown
+    class Processor
+      DEFAULT_FILTERS << Qiita::Markdown::Filters::Execute
+    end
+  end
+end
+
 processor = Qiita::Markdown::Processor.new
-result = processor.call(input.read)
-output = result[:output].to_s
-STDOUT.write(output)
+
+targets.each do |t|
+  result = processor.call(t.read)
+  output = result[:output].to_s
+  STDOUT.write(output)
+end
